@@ -24,7 +24,7 @@
                         </p>
                     @else
                         <p class="mt-4 text-red-600">
-                            {{ __("You're logged in but no role has been assigned.") }}
+                            {{ __("Aún no tienes ningún rol asignado.") }}
                         </p>
                     @endif
 
