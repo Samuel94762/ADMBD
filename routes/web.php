@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\OtpLoginController; // 👈 Importamos nuestro controlador
 use Illuminate\Support\Facades\Route;
 
+
 Route::get('/', function () {
     return view('welcome');
 });
@@ -11,6 +12,8 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::post('/otp/resend', [\App\Http\Controllers\Auth\OtpLoginController::class, 'resendOtp'])->name('otp.resend');
 
 // 🔐 Rutas para Login con OTP
 // =============================
