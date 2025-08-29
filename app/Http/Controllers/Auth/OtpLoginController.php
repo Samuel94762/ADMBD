@@ -66,7 +66,35 @@ class OtpLoginController extends Controller
     // Mostrar formulario OTP
     public function showOtpForm()
     {
-        return view('auth.otp');
+        $userId = session('otp_user_id');
+
+    if (!$userId) {
+        return redirect()->route('login')->withErrors([
+            'email' => 'Primero inicia sesión para generar un código OTP.',
+        ]);
+    }
+
+    // Último OTP sin usar para el usuario
+    $otp = \App\Models\CodigoOtp::where('user_id', $userId)
+        ->where('utilizado', false)
+        ->latest() // por created_at
+        ->first();
+
+    if (!$otp) {
+        return redirect()->route('login')->withErrors([
+            'email' => 'No se encontró un OTP activo. Inicia sesión nuevamente para generar uno nuevo.',
+        ]);
+    }
+
+    // Segundos restantes (si es negativo, forzamos a 0)
+    $remaining = now()->diffInSeconds($otp->expira_en, false);
+    if ($remaining < 0) {
+        $remaining = 0;
+    }
+
+    return view('auth.otp', [
+        'remainingSeconds' => $remaining,
+    ]);
     }
 
     // Validar OTP
@@ -96,4 +124,45 @@ class OtpLoginController extends Controller
 
         return redirect()->route('dashboard');
     }
+    public function resendOtp(Request $request)
+{
+    $userId = session('otp_user_id');
+
+    if (!$userId) {
+        return redirect()->route('login')->withErrors([
+            'email' => 'Primero inicia sesión para generar un código OTP.',
+        ]);
+    }
+
+    $user = \App\Models\User::find($userId);
+
+    if (!$user) {
+        return redirect()->route('login')->withErrors([
+            'email' => 'No se encontró el usuario.',
+        ]);
+    }
+
+    // Generar un nuevo código OTP
+    $codigo = rand(100000, 999999);
+    $expiraEn = now()->addSeconds(60);
+
+    \App\Models\CodigoOtp::create([
+        'user_id'   => $user->id,
+        'codigo'    => $codigo,
+        'expira_en' => $expiraEn,
+        'utilizado' => false,
+    ]);
+
+    // Enviar correo con el nuevo OTP
+    \Illuminate\Support\Facades\Mail::raw(
+        "Tu nuevo código OTP es: {$codigo}. Este código expira en 60 segundos.",
+        function ($message) use ($user) {
+            $message->to($user->email)
+                    ->subject('Nuevo código OTP');
+        }
+    );
+
+    return redirect()->route('otp.form')->with('status', 'Se ha enviado un nuevo OTP a tu correo.');
+}
+
 }
