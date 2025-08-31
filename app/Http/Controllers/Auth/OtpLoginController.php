@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Mail\OtpCodeMail;
 use App\Models\User;
 use App\Models\CodigoOtp;
 use Illuminate\Support\Facades\Hash;
@@ -52,10 +53,8 @@ class OtpLoginController extends Controller
             'utilizado' => false
         ]);
 
-        // Enviar OTP por correo
-        Mail::raw("Tu código OTP es: $codigo (válido 60s)", function($message) use ($user) {
-            $message->to($user->email)->subject('Código OTP');
-        });
+        // Enviar OTP por correo (ahora con plantilla Markdown)
+        Mail::to($user->email)->send(new OtpCodeMail($user, $codigo, 60));
 
         // Guardar en sesión
         session(['otp_user_id' => $user->id]);
@@ -154,13 +153,7 @@ class OtpLoginController extends Controller
     ]);
 
     // Enviar correo con el nuevo OTP
-    \Illuminate\Support\Facades\Mail::raw(
-        "Tu nuevo código OTP es: {$codigo}. Este código expira en 60 segundos.",
-        function ($message) use ($user) {
-            $message->to($user->email)
-                    ->subject('Nuevo código OTP');
-        }
-    );
+    \Illuminate\Support\Facades\Mail::to($user->email)->send(new OtpCodeMail($user, $codigo, 60));
 
     return redirect()->route('otp.form')->with('status', 'Se ha enviado un nuevo OTP a tu correo.');
 }
